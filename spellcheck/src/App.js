@@ -1,101 +1,84 @@
-import React, { useEffect, useState } from 'react';
-
- 
-
+import React, { useState } from 'react';
 import './App.css';
 
- 
-
 function App() {
+  const [text, setText] = useState('');
+  const [errors, setErrors] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const [Text, setText] = useState('');
+  const checkGrammar = async () => {
+    setErrors([]); 
+    setLoading(true);
 
-  let text = "";
+    const apiUrl = `https://api.textgears.com/check.php?text=${text}&key=wtWYtimCaW9fGPJ5`;
 
-  useEffect(() => {
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+      });
 
-    // Define a function to make the POST request
-
-    const postData = async () => {
-
-      try {
-
-        const apiUrl = `https://api.textgears.com/grammar?text=${Text}&language=en-GB&whitelist=&dictionary_id=&ai=1&key=wtWYtimCaW9fGPJ5`; // Replace with your API URL
-
-        const response = await fetch(apiUrl, {
-
-          method: 'POST',
-
-          headers: {
-
-            'Content-Type': 'application/json',
-
-          },
-
-          body: JSON.stringify(Text),
-
-        });
-
- 
-
-        if (!response.ok) {
-
-          throw new Error(`HTTP error! Status: ${response.status}`);
-
-        }
-
- 
-
-        const result = await response.json();
-
-        console.log('Data posted successfully:', result);
-
-      } catch (error) {
-
-        console.error('Error posting data:', error);
-
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
-    };
+      const result = await response.json();
+      console.log('Data fetched successfully:', result);
 
-    if (Text) {
-
-      postData();
-
+      if (result.errors && result.errors.length > 0) {
+        setErrors(result.errors);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-  }, [Text]);
-
- 
-
-  // const handleInputChange = (e) => {
-
-  //   const { text, index } = e.target;
-
-  //   setText({ ...Text, [text] : index });
-
-  // };
-
- 
+  const handleWordClick = (error) => {
+    if (error.suggestions && error.suggestions.length > 0) {
+      const suggestion = error.suggestions[0];
+      const correctedText = text.slice(0, error.offset) + suggestion + text.slice(error.offset + error.length);
+      setText(correctedText);
+    }
+  };
 
   return (
-
     <div className="App">
+      <h1 className="title">Grammar Checker</h1>
 
-      <h1>Enter Your Text Here To check your GRAMMAR</h1>
+      <div className="textarea-container">
+        <textarea
+          className="textarea"
+          placeholder="Enter your text here"
+          onChange={(e) => setText(e.target.value)}
+          value={text}
+        />
+        <button className="check-button" onClick={checkGrammar}>
+          Check Grammar
+        </button>
+      </div>
 
-      <textarea style={{ width: '400px', height: '400px', display: "block" }} onChange={(e) => text = (e.target.value)} />
-
-      <button onClick={() => setText(text) }>Check Text</button>
-
+      {loading && <p className="loading">Checking...</p>}
+      <div>
+        <h3>Errors:</h3>
+        {errors.map((error, index) => (
+          <div key={index}>
+            <p>
+              <span
+                style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={() => handleWordClick(error)}
+              >
+                {text.slice(error.offset, error.offset + error.length)}
+              </span>
+            </p>
+            {error.suggestions && error.suggestions.length > 0 && (
+              <p>Suggestions: {error.suggestions.join(', ')}</p>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
-
   );
-
 }
 
- 
-
 export default App;
-
- 
